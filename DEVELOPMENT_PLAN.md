@@ -17,8 +17,6 @@ We are building a real-time, interactive party game (a mashup of Jeopardy, Famil
 2. `app/join/page.tsx` (Mobile Registration): A public web form for guests to scan via QR code. Allows them to input their Team Name, Captain Name, and up to 5 team members. Writes to the `teams` node.
 3. `app/admin/page.tsx` (Control Panel): Mobile-friendly command center for the game host. Has UI to approve teams, change game state, open questions, and award points. Writes to all Firebase nodes.
 
-## Firebase Realtime Database Schema
-All state is managed synchronously via this exact JSON structure:
 
 ## Firebase Realtime Database Schema
 All state is managed synchronously via this exact JSON structure:
@@ -45,6 +43,21 @@ All state is managed synchronously via this exact JSON structure:
       "questionText": "The name of the street he lived on sophomore year.",
       "answerText": "What is Elm Street?",
       "isAnswered": false
+    },
+    "q_2": {
+      "category": "The Origin Story",
+      "points": 100,
+      "type": "kahoot",
+      "questionText": "What was the graduate's very first \"crime\" as a toddler?",
+      "answerText": "Escaping the crib repeatedly",
+      "isAnswered": false,
+      "options": [
+        "Escaping the crib repeatedly",
+        "Drawing on the walls with Sharpie",
+        "Eating a literal handful of dirt",
+        "Hiding the TV remote in the toilet"
+      ],
+      "correctAnswer": "Escaping the crib repeatedly"
     }
   }
 }
