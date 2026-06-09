@@ -234,6 +234,8 @@ export default function AdminPage() {
   const [passcode, setPasscode] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [spotifyWarning, setSpotifyWarning] = useState(false);
+  const [pendingTrack, setPendingTrack] = useState<{ trackUri: string; startTimeMs: number } | null>(null);
 
   const { gameState, teams, questions } = useGameState();
 
@@ -299,10 +301,35 @@ export default function AdminPage() {
       selectedAnswer: null,
       revealAnswer: false,
     });
+    setSpotifyWarning(false);
+    setPendingTrack(null);
+
     const question = questions?.[questionId];
     if (question?.isMusicRound && question.spotifyTrackUri && question.playbackStartTimeMs !== undefined) {
-      void playGameTrack(question.spotifyTrackUri, question.playbackStartTimeMs);
+      const trackUri = question.spotifyTrackUri;
+      const startTimeMs = question.playbackStartTimeMs;
+      setPendingTrack({ trackUri, startTimeMs });
+      void playGameTrack(trackUri, startTimeMs).then((result) => {
+        if (!result.ok && result.reason === "no_device") {
+          setSpotifyWarning(true);
+        } else {
+          setSpotifyWarning(false);
+          setPendingTrack(null);
+        }
+      });
     }
+  };
+
+  const retryPlayback = () => {
+    if (!pendingTrack) return;
+    void playGameTrack(pendingTrack.trackUri, pendingTrack.startTimeMs).then((result) => {
+      if (result.ok) {
+        setSpotifyWarning(false);
+        setPendingTrack(null);
+      } else if (result.reason === "no_device") {
+        setSpotifyWarning(true);
+      }
+    });
   };
 
   const selectAnswer = (option: string) => {
@@ -326,6 +353,8 @@ export default function AdminPage() {
       selectedAnswer: null,
       revealAnswer: false,
     });
+    setSpotifyWarning(false);
+    setPendingTrack(null);
     void pauseGameTrack();
   };
 
@@ -440,6 +469,22 @@ export default function AdminPage() {
 
               return (
                 <div className="mt-4 flex flex-col gap-4">
+                  {spotifyWarning && (
+                    <div className="flex flex-col gap-3 rounded-xl border-2 border-uh-scarlet bg-uh-scarlet/10 p-4 transition-all duration-300 ease-in-out sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-semibold text-uh-silver">
+                        ⚠️ No active Spotify device found. Please play a track
+                        on your host device, then click retry.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={retryPlayback}
+                        className="shrink-0 rounded-lg border-2 border-uh-scarlet px-4 py-2 text-sm font-bold uppercase tracking-wide text-uh-scarlet transition-all duration-300 ease-in-out hover:bg-uh-scarlet hover:text-zinc-50"
+                      >
+                        Retry Playback
+                      </button>
+                    </div>
+                  )}
+
                   <p className="text-sm text-zinc-400">
                     Now showing:{" "}
                     <span className="font-semibold text-uh-scarlet">

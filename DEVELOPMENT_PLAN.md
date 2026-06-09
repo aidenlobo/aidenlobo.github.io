@@ -8,9 +8,9 @@ We are building a real-time, interactive party game (a mashup of Jeopardy, Famil
 ## Tech Stack & Deployment Constraints
 * **Framework:** Next.js (App Router)
 * **Styling:** Tailwind CSS
-* **Database:** Firebase Realtime Database (Client-side SDK only)
-* **Hosting:** GitHub Pages (Static Export)
-* **CRITICAL CONSTRAINT:** Because this will be hosted on GitHub Pages, the Next.js app MUST be statically exported (`output: 'export'` in `next.config.js`). **Do not use Next.js Server Actions, Server-Side Rendering (SSR), or API routes.** All database interactions must happen client-side using the Firebase Realtime Database SDK.
+* **Database:** Firebase Realtime Database (Client-side SDK for real-time state sync)
+* **Hosting:** Vercel (hybrid deployment, server runtime enabled)
+* **ARCHITECTURE:** This is a hybrid Next.js application. All real-time game state (lobby, board, teams, questions) is synced client-side via the Firebase Realtime Database SDK. Next.js Server Actions (`"use server"`) are used exclusively for secure server-side execution of the Spotify Web API integration, keeping API credentials and access tokens off the client. Server-only modules (e.g. `src/lib/spotify.ts`) must use the `server-only` package to guarantee they are never bundled into client code.
 
 ## Routing Architecture
 1. `app/page.tsx` (Main Board): Displayed on a large TV. Listens to Firebase and displays the Kahoot-style lobby, the Jeopardy grid, or the active question. Read-only view (mostly).

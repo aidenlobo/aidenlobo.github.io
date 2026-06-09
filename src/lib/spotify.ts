@@ -1,6 +1,17 @@
 import "server-only";
 
+interface CachedToken {
+  accessToken: string;
+  expiresAt: number;
+}
+
+let cachedToken: CachedToken | null = null;
+
 export async function getSpotifyAccessToken(): Promise<string | null> {
+  if (cachedToken && cachedToken.expiresAt > Date.now()) {
+    return cachedToken.accessToken;
+  }
+
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
   const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
@@ -35,7 +46,16 @@ export async function getSpotifyAccessToken(): Promise<string | null> {
     }
 
     const data = await response.json();
-    return data.access_token as string;
+    const accessToken = data.access_token as string;
+    const expiresInMs = (data.expires_in as number) * 1000;
+
+    cachedToken = {
+      accessToken,
+      // Refresh a minute early to avoid using a token that expires mid-request.
+      expiresAt: Date.now() + expiresInMs - 60_000,
+    };
+
+    return accessToken;
   } catch (error) {
     console.error("[Spotify] Network error during token refresh:", error);
     return null;

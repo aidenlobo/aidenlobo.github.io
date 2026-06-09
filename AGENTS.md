@@ -1,18 +1,17 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This version has breaking changes. APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-# PROJECT SPECIFIC RULES: STATIC EXPORT & FIREBASE
+This version has breaking changes. APIs, conventions, and file structure may all differ from your training data.
+# PROJECT SPECIFIC RULES: VERCEL HYBRID DEPLOYMENT (FIREBASE + SERVER ACTIONS)
 
-You are writing code for a Next.js App Router application that must be compiled as a static HTML export using the `output: 'export'` configuration for GitHub Pages. 
+You are writing code for a Next.js App Router application deployed on Vercel as a hybrid app (server runtime enabled — this is NOT a static export).
 
 Strictly adhere to the following rules to prevent deployment failure:
 
-## 1. Strictly Client Side Architecture
-There is no Node.js server at runtime. 
-* You are forbidden from using Next.js Server Actions.
-* You are forbidden from using API Routes (`app/api/...`).
-* Every interactive component, hook, or file interacting with Firebase must begin with the `"use client";` directive at the very top.
+## 1. Hybrid Client/Server Architecture
+* All real-time game state (lobby, board, teams, questions) must be synced via the Firebase Realtime Database client SDK. Every component, hook, or file interacting with Firebase this way must begin with the `"use client";` directive at the very top.
+* Next.js Server Actions (`"use server"`) are the required mechanism for any code that needs secret credentials or calls third-party APIs (e.g., the Spotify Web API). Do not move this logic to the client.
+* Server-only modules (e.g., `src/lib/spotify.ts`) must import the `server-only` package at the top of the file to guarantee they can never be bundled into client code.
 
 ## 2. App Router Best Practices
 * Use `app/page.tsx` and `app/layout.tsx`. Do not use the `pages/` directory.

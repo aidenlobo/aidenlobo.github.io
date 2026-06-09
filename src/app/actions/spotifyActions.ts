@@ -2,11 +2,15 @@
 
 import { getSpotifyAccessToken } from "@/lib/spotify";
 
-export async function playGameTrack(trackUri: string, startTimeMs: number): Promise<void> {
+export type SpotifyActionResult =
+  | { ok: true }
+  | { ok: false; reason: "no_token" | "no_device" | "error" };
+
+export async function playGameTrack(trackUri: string, startTimeMs: number): Promise<SpotifyActionResult> {
   const token = await getSpotifyAccessToken();
   if (!token) {
     console.error("[Spotify] playGameTrack: No access token — skipping playback.");
-    return;
+    return { ok: false, reason: "no_token" };
   }
 
   try {
@@ -22,21 +26,25 @@ export async function playGameTrack(trackUri: string, startTimeMs: number): Prom
     if (!response.ok) {
       if (response.status === 404) {
         // No active Spotify device — not a game-breaking error.
-        return;
+        return { ok: false, reason: "no_device" };
       }
       const errorText = await response.text();
       console.error(`[Spotify] playGameTrack failed (${response.status}): ${errorText}`);
+      return { ok: false, reason: "error" };
     }
+
+    return { ok: true };
   } catch (error) {
     console.error("[Spotify] playGameTrack network error:", error);
+    return { ok: false, reason: "error" };
   }
 }
 
-export async function pauseGameTrack(): Promise<void> {
+export async function pauseGameTrack(): Promise<SpotifyActionResult> {
   const token = await getSpotifyAccessToken();
   if (!token) {
     console.error("[Spotify] pauseGameTrack: No access token — skipping pause.");
-    return;
+    return { ok: false, reason: "no_token" };
   }
 
   try {
@@ -48,12 +56,16 @@ export async function pauseGameTrack(): Promise<void> {
     if (!response.ok) {
       if (response.status === 404) {
         // No active device to pause — safe to ignore.
-        return;
+        return { ok: false, reason: "no_device" };
       }
       const errorText = await response.text();
       console.error(`[Spotify] pauseGameTrack failed (${response.status}): ${errorText}`);
+      return { ok: false, reason: "error" };
     }
+
+    return { ok: true };
   } catch (error) {
     console.error("[Spotify] pauseGameTrack network error:", error);
+    return { ok: false, reason: "error" };
   }
 }

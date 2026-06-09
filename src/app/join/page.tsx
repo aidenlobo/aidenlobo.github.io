@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { push, ref, set } from "firebase/database";
+import { useEffect, useState } from "react";
+import { get, push, ref, set } from "firebase/database";
 import { database } from "@/lib/firebase";
 import { useGameState } from "@/hooks/useGameState";
 
 const MAX_MEMBERS = 5;
 const MIN_MEMBERS = 2;
+const TEAM_ID_STORAGE_KEY = "teamId";
 
 export default function JoinPage() {
   const { gameState } = useGameState();
@@ -16,6 +17,29 @@ export default function JoinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const storedTeamId = localStorage.getItem(TEAM_ID_STORAGE_KEY);
+
+    const checkExistingTeam = storedTeamId
+      ? get(ref(database, `teams/${storedTeamId}`)).then((snapshot) => {
+          if (snapshot.exists()) {
+            setSubmitted(true);
+          } else {
+            localStorage.removeItem(TEAM_ID_STORAGE_KEY);
+          }
+        })
+      : Promise.resolve();
+
+    checkExistingTeam
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        setCheckingSession(false);
+      });
+  }, []);
 
   const filledMembers = members.map((m) => m.trim()).filter((m) => m.length > 0);
 
@@ -53,6 +77,9 @@ export default function JoinPage() {
         members: filledMembers,
         score: 0,
       });
+      if (newTeamRef.key) {
+        localStorage.setItem(TEAM_ID_STORAGE_KEY, newTeamRef.key);
+      }
       setSubmitted(true);
     } catch (err) {
       setError("Something went wrong submitting your team. Please try again.");
@@ -61,6 +88,16 @@ export default function JoinPage() {
       setSubmitting(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center bg-uh-charcoal px-6 text-center transition-all duration-300 ease-in-out">
+        <p className="animate-pulse text-2xl font-bold uppercase tracking-[0.3em] text-uh-silver">
+          Loading...
+        </p>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
