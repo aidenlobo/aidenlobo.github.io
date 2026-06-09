@@ -29,6 +29,9 @@ export interface Question {
   isAnswered: boolean;
   options?: string[];
   correctAnswer?: string;
+  spotifyTrackUri?: string;
+  playbackStartTimeMs?: number;
+  isMusicRound?: boolean;
 }
 
 export type Questions = Record<string, Question>;

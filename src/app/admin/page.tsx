@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ref, remove, set, update } from "firebase/database";
 import { database } from "@/lib/firebase";
 import { useGameState, type GameState, type Question } from "@/hooks/useGameState";
+import { playGameTrack, pauseGameTrack } from "@/app/actions/spotifyActions";
 
 const MASTER_KEY = "admin123";
 
@@ -11,6 +12,9 @@ interface SeedQuestion {
   questionText: string;
   correct: string;
   wrong: string[];
+  isMusicRound?: boolean;
+  spotifyTrackUri?: string;
+  playbackStartTimeMs?: number;
 }
 
 interface SeedCategory {
@@ -74,6 +78,9 @@ const SEED_CATEGORIES: SeedCategory[] = [
           "Accidentally scoring on their own goalie",
           "Getting a yellow card for arguing with the referee",
         ],
+        isMusicRound: true,
+        spotifyTrackUri: "spotify:track:0GONea6G2XdnHWjNZd6zt3",
+        playbackStartTimeMs: 30000,
       },
       {
         questionText: "In basketball, what was the graduate statistically most famous for?",
@@ -83,6 +90,9 @@ const SEED_CATEGORIES: SeedCategory[] = [
           "Committing 4 fouls in under two minutes",
           "Spending 90% of the game wiping the bottom of their sneakers",
         ],
+        isMusicRound: true,
+        spotifyTrackUri: "spotify:track:0GONea6G2XdnHWjNZd6zt3",
+        playbackStartTimeMs: 30000,
       },
       {
         questionText:
@@ -93,12 +103,18 @@ const SEED_CATEGORIES: SeedCategory[] = [
           "Getting water logged in their ears for three straight months",
           "The pure agony of the 500-yard freestyle",
         ],
+        isMusicRound: true,
+        spotifyTrackUri: "spotify:track:0GONea6G2XdnHWjNZd6zt3",
+        playbackStartTimeMs: 30000,
       },
       {
         questionText:
           "If the graduate won an award for their sports career, what would the trophy actually say?",
         correct: "\"Most Likely to Turn a Practice Into a Stand-Up Comedy Routine\"",
         wrong: ["\"Future Olympian\"", "\"Never Missed a Single Pass\"", "\"Most Intimidating Game Face\""],
+        isMusicRound: true,
+        spotifyTrackUri: "spotify:track:0GONea6G2XdnHWjNZd6zt3",
+        playbackStartTimeMs: 30000,
       },
     ],
   },
@@ -204,6 +220,9 @@ function buildSeedQuestions(): Record<string, Question> {
         isAnswered: false,
         options: [seedQuestion.correct, ...seedQuestion.wrong],
         correctAnswer: seedQuestion.correct,
+        ...(seedQuestion.isMusicRound && { isMusicRound: true }),
+        ...(seedQuestion.spotifyTrackUri && { spotifyTrackUri: seedQuestion.spotifyTrackUri }),
+        ...(seedQuestion.playbackStartTimeMs !== undefined && { playbackStartTimeMs: seedQuestion.playbackStartTimeMs }),
       };
     });
   });
@@ -230,17 +249,17 @@ export default function AdminPage() {
 
   if (!authenticated) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-zinc-950 px-6">
+      <div className="flex flex-1 flex-col items-center justify-center bg-uh-charcoal px-6">
         <form
           onSubmit={handlePasscodeSubmit}
-          className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-8"
+          className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-8 transition-all duration-300 ease-in-out"
         >
           <h1 className="text-center text-2xl font-bold text-zinc-50">
-            Admin Access
+            Admin <span className="text-uh-scarlet">Access</span>
           </h1>
           <label
             htmlFor="passcode"
-            className="text-sm font-semibold text-zinc-400"
+            className="text-sm font-semibold text-uh-silver"
           >
             Enter master key
           </label>
@@ -249,14 +268,14 @@ export default function AdminPage() {
             type="password"
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
-            className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-base text-zinc-50 outline-none focus:border-amber-400"
+            className="rounded-xl border border-uh-silver/30 bg-uh-charcoal px-4 py-3 text-base text-zinc-50 outline-none transition-all duration-300 ease-in-out focus:border-uh-scarlet"
           />
           {error && (
             <p className="text-sm font-medium text-red-400">{error}</p>
           )}
           <button
             type="submit"
-            className="rounded-xl bg-amber-400 px-5 py-3 text-base font-semibold text-zinc-950 transition-colors hover:bg-amber-300"
+            className="rounded-xl bg-uh-scarlet px-5 py-3 text-base font-semibold text-zinc-50 transition-all duration-300 ease-in-out hover:bg-uh-scarlet/80"
           >
             Unlock
           </button>
@@ -280,14 +299,20 @@ export default function AdminPage() {
       selectedAnswer: null,
       revealAnswer: false,
     });
+    const question = questions?.[questionId];
+    if (question?.isMusicRound && question.spotifyTrackUri && question.playbackStartTimeMs !== undefined) {
+      void playGameTrack(question.spotifyTrackUri, question.playbackStartTimeMs);
+    }
   };
 
   const selectAnswer = (option: string) => {
     void update(ref(database, "gameState"), { selectedAnswer: option });
+    void pauseGameTrack();
   };
 
   const revealCorrectAnswer = () => {
     void update(ref(database, "gameState"), { revealAnswer: true });
+    void pauseGameTrack();
   };
 
   const backToBoard = () => {
@@ -301,6 +326,7 @@ export default function AdminPage() {
       selectedAnswer: null,
       revealAnswer: false,
     });
+    void pauseGameTrack();
   };
 
   const resetGameBoard = () => {
@@ -349,27 +375,27 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-10 bg-zinc-950 px-4 py-8 text-zinc-50 sm:px-8">
+    <div className="flex flex-1 flex-col gap-10 bg-uh-charcoal px-4 py-8 text-zinc-50 sm:px-8">
       <header>
-        <h1 className="text-3xl font-black uppercase tracking-tight text-amber-400 sm:text-4xl">
+        <h1 className="text-3xl font-black uppercase tracking-tight text-uh-scarlet sm:text-4xl">
           Control Panel
         </h1>
       </header>
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-        <h2 className="text-lg font-bold uppercase tracking-wide text-zinc-300">
+      <section className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out">
+        <h2 className="text-lg font-bold uppercase tracking-wide text-uh-silver">
           Game Control
         </h2>
         <p className="mt-2 text-sm text-zinc-400">
           Current status:{" "}
-          <span className="font-semibold text-amber-400">{status}</span>
+          <span className="font-semibold text-uh-scarlet">{status}</span>
         </p>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <button
             type="button"
             onClick={() => setGameStatus("welcome")}
             disabled={status === "welcome"}
-            className="rounded-xl bg-zinc-800 px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-amber-400 disabled:text-zinc-950"
+            className="rounded-xl border border-uh-silver/20 bg-uh-charcoal px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:border-uh-scarlet hover:bg-uh-charcoal-light disabled:cursor-not-allowed disabled:border-uh-scarlet disabled:bg-uh-scarlet disabled:text-zinc-50"
           >
             1. Show Welcome Screen
           </button>
@@ -377,7 +403,7 @@ export default function AdminPage() {
             type="button"
             onClick={() => setGameStatus("lobby")}
             disabled={status === "lobby"}
-            className="rounded-xl bg-zinc-800 px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-amber-400 disabled:text-zinc-950"
+            className="rounded-xl border border-uh-silver/20 bg-uh-charcoal px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:border-uh-scarlet hover:bg-uh-charcoal-light disabled:cursor-not-allowed disabled:border-uh-scarlet disabled:bg-uh-scarlet disabled:text-zinc-50"
           >
             2. Open Lobby
           </button>
@@ -385,7 +411,7 @@ export default function AdminPage() {
             type="button"
             onClick={() => setGameStatus("board")}
             disabled={status === "board"}
-            className="rounded-xl bg-zinc-800 px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-amber-400 disabled:text-zinc-950"
+            className="rounded-xl border border-uh-silver/20 bg-uh-charcoal px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:border-uh-scarlet hover:bg-uh-charcoal-light disabled:cursor-not-allowed disabled:border-uh-scarlet disabled:bg-uh-scarlet disabled:text-zinc-50"
           >
             3. Show Board
           </button>
@@ -394,15 +420,15 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={resetGameBoard}
-          className="mt-4 w-full rounded-xl border-2 border-rose-400 bg-rose-500/10 px-5 py-4 text-base font-black uppercase tracking-wide text-rose-300 transition-colors hover:bg-rose-500/20"
+          className="mt-4 w-full rounded-xl border-2 border-rose-400 bg-rose-500/10 px-5 py-4 text-base font-black uppercase tracking-wide text-rose-300 transition-all duration-300 ease-in-out hover:bg-rose-500/20"
         >
           Reset Game Board
         </button>
       </section>
 
       {status === "board" && (
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="text-lg font-bold uppercase tracking-wide text-zinc-300">
+        <section className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out">
+          <h2 className="text-lg font-bold uppercase tracking-wide text-uh-silver">
             {currentQuestionId ? "Active Question Controls" : "Question Selection"}
           </h2>
 
@@ -416,7 +442,7 @@ export default function AdminPage() {
                 <div className="mt-4 flex flex-col gap-4">
                   <p className="text-sm text-zinc-400">
                     Now showing:{" "}
-                    <span className="font-semibold text-amber-400">
+                    <span className="font-semibold text-uh-scarlet">
                       {activeQuestion?.questionText ?? currentQuestionId}
                     </span>
                   </p>
@@ -427,10 +453,10 @@ export default function AdminPage() {
                         key={option}
                         type="button"
                         onClick={() => selectAnswer(option)}
-                        className={`rounded-xl border-2 p-4 text-left text-base font-semibold transition-colors ${
+                        className={`rounded-xl border-2 p-4 text-left text-base font-semibold transition-all duration-300 ease-in-out ${
                           option === selectedAnswer
-                            ? "border-amber-400 bg-amber-400/10 text-amber-300"
-                            : "border-zinc-700 bg-zinc-800 text-zinc-200 hover:border-zinc-500"
+                            ? "border-uh-scarlet bg-uh-scarlet/10 text-uh-scarlet"
+                            : "border-uh-silver/30 bg-uh-charcoal text-zinc-200 hover:border-uh-scarlet"
                         }`}
                       >
                         {option}
@@ -442,14 +468,14 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={revealCorrectAnswer}
-                      className="rounded-2xl bg-emerald-500 px-6 py-8 text-xl font-black uppercase tracking-wide text-zinc-950 transition-colors hover:bg-emerald-400"
+                      className="rounded-2xl bg-emerald-500 px-6 py-8 text-xl font-black uppercase tracking-wide text-zinc-950 transition-all duration-300 ease-in-out hover:bg-emerald-400"
                     >
                       Reveal Correct Answer
                     </button>
                     <button
                       type="button"
                       onClick={backToBoard}
-                      className="rounded-2xl bg-amber-400 px-6 py-8 text-xl font-black uppercase tracking-wide text-zinc-950 transition-colors hover:bg-amber-300"
+                      className="rounded-2xl bg-uh-scarlet px-6 py-8 text-xl font-black uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:bg-uh-scarlet/80"
                     >
                       Back to Board
                     </button>
@@ -469,12 +495,12 @@ export default function AdminPage() {
                   type="button"
                   onClick={() => selectQuestion(questionId)}
                   disabled={question.isAnswered}
-                  className="flex flex-col items-start gap-1 rounded-xl border border-zinc-700 bg-zinc-800 p-4 text-left transition-colors hover:border-amber-400 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:opacity-50"
+                  className="flex flex-col items-start gap-1 rounded-xl border border-uh-silver/20 bg-uh-charcoal p-4 text-left transition-all duration-300 ease-in-out hover:border-uh-scarlet disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-uh-charcoal-light disabled:opacity-50"
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-uh-silver">
                     {question.category}
                   </span>
-                  <span className="text-lg font-bold text-amber-400">
+                  <span className="text-lg font-bold text-uh-scarlet">
                     {question.points} pts
                   </span>
                   <span className="text-sm text-zinc-300 line-clamp-2">
@@ -492,8 +518,8 @@ export default function AdminPage() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-        <h2 className="text-lg font-bold uppercase tracking-wide text-zinc-300">
+      <section className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out">
+        <h2 className="text-lg font-bold uppercase tracking-wide text-uh-silver">
           Team Management
         </h2>
 
@@ -504,13 +530,13 @@ export default function AdminPage() {
             {teamEntries.map(([teamId, team]) => (
               <div
                 key={teamId}
-                className="flex flex-col gap-4 rounded-xl border border-zinc-700 bg-zinc-800 p-5 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-xl border border-uh-silver/20 bg-uh-charcoal p-5 transition-all duration-300 ease-in-out hover:border-uh-scarlet sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="text-xl font-bold text-zinc-50">{team.name}</p>
                   <p className="text-sm font-medium text-zinc-400">
                     Score:{" "}
-                    <span className="font-bold text-amber-400">
+                    <span className="font-bold text-uh-scarlet">
                       {team.score}
                     </span>
                   </p>
@@ -520,21 +546,21 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => adjustScore(teamId, team.score, 100)}
-                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-950 transition-colors hover:bg-emerald-400"
+                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-950 transition-all duration-300 ease-in-out hover:bg-emerald-400"
                   >
                     +100
                   </button>
                   <button
                     type="button"
                     onClick={() => adjustScore(teamId, team.score, -100)}
-                    className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-bold text-zinc-950 transition-colors hover:bg-rose-400"
+                    className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-bold text-zinc-950 transition-all duration-300 ease-in-out hover:bg-rose-400"
                   >
                     -100
                   </button>
                   <button
                     type="button"
                     onClick={() => removeTeam(teamId)}
-                    className="rounded-lg border border-zinc-600 px-4 py-2 text-sm font-bold text-zinc-300 transition-colors hover:border-rose-400 hover:text-rose-400"
+                    className="rounded-lg border border-uh-silver/30 px-4 py-2 text-sm font-bold text-zinc-300 transition-all duration-300 ease-in-out hover:border-rose-400 hover:text-rose-400"
                   >
                     Remove
                   </button>
@@ -545,7 +571,7 @@ export default function AdminPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border-2 border-dashed border-rose-400 bg-rose-950/30 p-6">
+      <section className="rounded-2xl border-2 border-dashed border-rose-400 bg-rose-950/30 p-6 transition-all duration-300 ease-in-out">
         <h2 className="text-lg font-bold uppercase tracking-wide text-rose-300">
           Danger Zone — Temporary Setup Tool
         </h2>
@@ -556,7 +582,7 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={seedDatabase}
-          className="mt-4 w-full rounded-xl bg-rose-500 px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-950 transition-colors hover:bg-rose-400 sm:w-auto"
+          className="mt-4 w-full rounded-xl bg-rose-500 px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-950 transition-all duration-300 ease-in-out hover:bg-rose-400 sm:w-auto"
         >
           Seed Database
         </button>

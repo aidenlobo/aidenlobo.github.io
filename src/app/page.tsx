@@ -33,13 +33,15 @@ export default function Home() {
 
 function Welcome() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-zinc-950 px-6 text-center">
-      <p className="text-lg font-semibold uppercase tracking-[0.5em] text-amber-400">
+    <div className="flex flex-1 flex-col items-center justify-center bg-uh-charcoal px-6 text-center transition-all duration-300 ease-in-out">
+      <p className="text-lg font-semibold uppercase tracking-[0.5em] text-uh-silver">
         You&apos;re Invited
       </p>
       <h1 className="mt-6 text-5xl font-black uppercase leading-tight tracking-tight text-zinc-50 sm:text-7xl lg:text-8xl">
-        Aiden&apos;s Graduation Party
+        Aiden&apos;s Coog{" "}
+        <span className="text-uh-scarlet">Jeopardy</span> Championship
       </h1>
+      <div className="mt-8 h-1.5 w-48 bg-uh-scarlet transition-all duration-300 ease-in-out sm:w-64" />
     </div>
   );
 }
@@ -52,16 +54,16 @@ function Lobby({ teams }: LobbyProps) {
   const teamEntries = teams ? Object.entries(teams) : [];
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-950 px-6 py-10 text-zinc-50 sm:px-12">
+    <div className="flex flex-1 flex-col bg-uh-charcoal px-6 py-10 text-zinc-50 sm:px-12">
       <header className="text-center">
-        <h1 className="text-5xl font-black uppercase tracking-tight text-amber-400 sm:text-7xl">
+        <h1 className="text-5xl font-black uppercase tracking-tight text-uh-scarlet sm:text-7xl">
           Welcome to Aiden&apos;s Graduation
         </h1>
       </header>
 
       <div className="mt-12 grid flex-1 grid-cols-1 gap-10 lg:grid-cols-2">
-        <section className="flex flex-col items-center justify-center gap-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-          <h2 className="text-2xl font-bold uppercase tracking-wide text-zinc-300 sm:text-3xl">
+        <section className="flex flex-col items-center justify-center gap-6 rounded-3xl border border-uh-silver/30 bg-uh-charcoal-light p-10 text-center transition-all duration-300 ease-in-out">
+          <h2 className="text-2xl font-bold uppercase tracking-wide text-uh-silver sm:text-3xl">
             Scan to Join
           </h2>
           <div className="rounded-2xl bg-white p-6">
@@ -73,8 +75,8 @@ function Lobby({ teams }: LobbyProps) {
           </p>
         </section>
 
-        <section className="flex flex-col gap-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-10">
-          <h2 className="text-2xl font-bold uppercase tracking-wide text-zinc-300 sm:text-3xl">
+        <section className="flex flex-col gap-6 rounded-3xl border border-uh-silver/30 bg-uh-charcoal-light p-10 transition-all duration-300 ease-in-out">
+          <h2 className="text-2xl font-bold uppercase tracking-wide text-uh-silver sm:text-3xl">
             Teams Checked In
           </h2>
 
@@ -87,12 +89,12 @@ function Lobby({ teams }: LobbyProps) {
               {teamEntries.map(([teamId, team]) => (
                 <div
                   key={teamId}
-                  className="rounded-2xl border border-zinc-700 bg-zinc-800 p-6 shadow-lg"
+                  className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal p-6 shadow-lg transition-all duration-300 ease-in-out hover:border-uh-scarlet"
                 >
                   <p className="text-xl font-bold text-zinc-50 sm:text-2xl">
                     {team.name}
                   </p>
-                  <p className="mt-1 text-sm font-medium uppercase tracking-wide text-amber-400">
+                  <p className="mt-1 text-sm font-medium uppercase tracking-wide text-uh-scarlet">
                     Captain: {team.captain}
                   </p>
                 </div>
@@ -126,8 +128,8 @@ function Board({ questions }: BoardProps) {
 
   if (categoryEntries.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-zinc-950 px-6 text-center">
-        <p className="animate-pulse text-6xl font-black uppercase tracking-tight text-amber-400 sm:text-8xl">
+      <div className="flex flex-1 flex-col items-center justify-center bg-uh-charcoal px-6 text-center">
+        <p className="animate-pulse text-6xl font-black uppercase tracking-tight text-uh-scarlet sm:text-8xl">
           Game Starting...
         </p>
       </div>
@@ -135,9 +137,9 @@ function Board({ questions }: BoardProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-950 px-6 py-10 text-zinc-50 sm:px-12">
+    <div className="flex flex-1 flex-col bg-uh-charcoal px-6 py-10 text-zinc-50 sm:px-12">
       <header className="text-center">
-        <h1 className="text-4xl font-black uppercase tracking-tight text-amber-400 sm:text-6xl">
+        <h1 className="text-4xl font-black uppercase tracking-tight text-uh-scarlet sm:text-6xl">
           Trivia Board
         </h1>
       </header>
@@ -146,9 +148,9 @@ function Board({ questions }: BoardProps) {
         {categoryEntries.map(([category, categoryQuestions]) => (
           <section
             key={category}
-            className="flex flex-col gap-3 rounded-3xl border border-zinc-800 bg-zinc-900 p-6"
+            className="flex flex-col gap-3 rounded-3xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out"
           >
-            <h2 className="text-center text-lg font-bold uppercase tracking-wide text-zinc-300 sm:text-xl">
+            <h2 className="rounded-xl border border-uh-silver/40 bg-uh-scarlet py-2 text-center text-lg font-bold uppercase tracking-wide text-uh-silver sm:text-xl">
               {category}
             </h2>
             <div className="flex flex-col gap-3">
@@ -157,10 +159,10 @@ function Board({ questions }: BoardProps) {
                 .map((question) => (
                   <div
                     key={`${category}-${question.points}`}
-                    className={`flex items-center justify-center rounded-2xl border p-6 text-2xl font-black sm:text-3xl ${
+                    className={`flex items-center justify-center rounded-2xl border p-6 text-2xl font-black transition-all duration-300 ease-in-out sm:text-3xl ${
                       question.isAnswered
                         ? "border-zinc-800 bg-zinc-800 text-zinc-600"
-                        : "border-amber-400/40 bg-zinc-800 text-amber-400"
+                        : "border-uh-scarlet/40 bg-uh-charcoal text-uh-scarlet hover:border-uh-scarlet hover:bg-uh-charcoal-light"
                     }`}
                   >
                     {question.points}
@@ -184,8 +186,8 @@ function ActiveQuestion({ question, revealAnswer, selectedAnswer }: ActiveQuesti
   const options = question.options ?? [];
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-950 px-6 py-10 text-zinc-50 sm:px-12">
-      <p className="text-center text-lg font-bold uppercase tracking-[0.4em] text-amber-400">
+    <div className="flex flex-1 flex-col bg-uh-charcoal px-6 py-10 text-zinc-50 sm:px-12">
+      <p className="text-center text-lg font-bold uppercase tracking-[0.4em] text-uh-scarlet">
         {question.category} · {question.points} pts
       </p>
 
@@ -198,7 +200,7 @@ function ActiveQuestion({ question, revealAnswer, selectedAnswer }: ActiveQuesti
           const isCorrect = option === question.correctAnswer;
           const isSelected = option === selectedAnswer;
 
-          let style = "border-zinc-700 bg-zinc-900 text-zinc-50";
+          let style = "border-uh-silver/30 bg-uh-charcoal-light text-zinc-50";
           if (isSelected) {
             style = isCorrect
               ? "border-emerald-400 bg-emerald-500 text-zinc-950"
@@ -210,7 +212,7 @@ function ActiveQuestion({ question, revealAnswer, selectedAnswer }: ActiveQuesti
           return (
             <div
               key={option}
-              className={`flex items-center justify-center rounded-3xl border-2 p-8 text-center text-2xl font-bold sm:text-3xl ${style}`}
+              className={`flex items-center justify-center rounded-3xl border-2 p-8 text-center text-2xl font-bold transition-all duration-300 ease-in-out sm:text-3xl ${style}`}
             >
               {option}
             </div>

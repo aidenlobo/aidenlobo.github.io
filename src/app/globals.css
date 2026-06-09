@@ -8,6 +8,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-uh-scarlet: #c8102e;
+  --color-uh-silver: #75787b;
+  --color-uh-charcoal: #121212;
+  --color-uh-charcoal-light: #1e1e1e;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
