@@ -230,6 +230,57 @@ function buildSeedQuestions(): Record<string, Question> {
   return payload;
 }
 
+/* ─────────────────────────────────────────────
+   Shared tiny components
+───────────────────────────────────────────── */
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2
+      className="text-xs font-bold uppercase tracking-[0.2em] text-uh-silver"
+      style={{ fontFamily: "var(--font-body)" }}
+    >
+      {children}
+    </h2>
+  );
+}
+
+/** Standard matte-black control button */
+function ControlBtn({
+  children,
+  onClick,
+  disabled,
+  active,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`
+        rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide
+        transition-all duration-300 ease-in-out
+        ${
+          active
+            ? "border-uh-silver bg-uh-silver text-zinc-900 cursor-default"
+            : disabled
+            ? "cursor-not-allowed border-uh-scarlet bg-uh-scarlet text-zinc-50 opacity-80"
+            : "border-uh-silver/30 bg-uh-charcoal text-zinc-200 hover:border-uh-scarlet hover:bg-uh-charcoal-light"
+        }
+      `}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Admin Page
+───────────────────────────────────────────── */
 export default function AdminPage() {
   const [passcode, setPasscode] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -249,35 +300,44 @@ export default function AdminPage() {
     }
   };
 
+  /* ── Passcode Gate ── */
   if (!authenticated) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center bg-uh-charcoal px-6">
         <form
           onSubmit={handlePasscodeSubmit}
-          className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-8 transition-all duration-300 ease-in-out"
+          className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-uh-silver/25 bg-uh-charcoal-light p-8 shadow-xl transition-all duration-300"
         >
-          <h1 className="text-center text-2xl font-bold text-zinc-50">
-            Admin <span className="text-uh-scarlet">Access</span>
-          </h1>
+          <div className="flex items-center gap-3">
+            <div className="uh-badge">UH</div>
+            <h1
+              className="text-2xl font-bold text-zinc-50"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              Admin <span className="text-uh-scarlet">Access</span>
+            </h1>
+          </div>
+
           <label
             htmlFor="passcode"
-            className="text-sm font-semibold text-uh-silver"
+            className="text-xs font-semibold uppercase tracking-widest text-uh-silver"
           >
-            Enter master key
+            Master Key
           </label>
           <input
             id="passcode"
             type="password"
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
-            className="rounded-xl border border-uh-silver/30 bg-uh-charcoal px-4 py-3 text-base text-zinc-50 outline-none transition-all duration-300 ease-in-out focus:border-uh-scarlet"
+            className="input-underline"
+            placeholder="Enter passcode..."
           />
           {error && (
-            <p className="text-sm font-medium text-red-400">{error}</p>
+            <p className="text-xs font-medium text-red-400">{error}</p>
           )}
           <button
             type="submit"
-            className="rounded-xl bg-uh-scarlet px-5 py-3 text-base font-semibold text-zinc-50 transition-all duration-300 ease-in-out hover:bg-uh-scarlet/80"
+            className="w-full rounded-lg bg-uh-scarlet px-5 py-2.5 text-sm font-bold uppercase tracking-widest text-zinc-50 transition-all duration-300 hover:bg-uh-scarlet-dark active:scale-95"
           >
             Unlock
           </button>
@@ -286,6 +346,7 @@ export default function AdminPage() {
     );
   }
 
+  /* ── Authenticated state setup ── */
   const status = gameState?.status ?? "lobby";
   const currentQuestionId = gameState?.currentQuestionId ?? null;
   const teamEntries = teams ? Object.entries(teams) : [];
@@ -403,63 +464,70 @@ export default function AdminPage() {
     void set(ref(database, "questions"), buildSeedQuestions());
   };
 
+  /* ── Main admin UI ── */
   return (
-    <div className="flex flex-1 flex-col gap-10 bg-uh-charcoal px-4 py-8 text-zinc-50 sm:px-8">
-      <header>
-        <h1 className="text-3xl font-black uppercase tracking-tight text-uh-scarlet sm:text-4xl">
-          Control Panel
-        </h1>
+    <div
+      className="flex flex-1 flex-col gap-3 bg-uh-charcoal px-4 py-3 text-zinc-50 sm:px-6"
+      style={{ fontFamily: "var(--font-body)" }}
+    >
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="uh-badge">UH</div>
+          <h1
+            className="text-xl font-black uppercase tracking-tight text-uh-scarlet sm:text-2xl"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Control Panel
+          </h1>
+        </div>
+        <span className="rounded-full border border-uh-silver/20 bg-uh-charcoal-light px-3 py-1 text-xs font-semibold uppercase tracking-widest text-uh-silver">
+          Status: <span className="text-uh-scarlet">{status}</span>
+        </span>
       </header>
 
-      <section className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out">
-        <h2 className="text-lg font-bold uppercase tracking-wide text-uh-silver">
-          Game Control
-        </h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Current status:{" "}
-          <span className="font-semibold text-uh-scarlet">{status}</span>
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <button
-            type="button"
+      {/* ── Game Control ── */}
+      <section className="rounded-xl border border-uh-silver/20 bg-uh-charcoal-light p-4 transition-all duration-300">
+        <SectionHeading>Game Control</SectionHeading>
+        <div className="mt-2.5 grid grid-cols-3 gap-2">
+          <ControlBtn
             onClick={() => setGameStatus("welcome")}
             disabled={status === "welcome"}
-            className="rounded-xl border border-uh-silver/20 bg-uh-charcoal px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:border-uh-scarlet hover:bg-uh-charcoal-light disabled:cursor-not-allowed disabled:border-uh-scarlet disabled:bg-uh-scarlet disabled:text-zinc-50"
+            active={status === "welcome"}
           >
-            1. Show Welcome Screen
-          </button>
-          <button
-            type="button"
+            1. Welcome
+          </ControlBtn>
+          <ControlBtn
             onClick={() => setGameStatus("lobby")}
             disabled={status === "lobby"}
-            className="rounded-xl border border-uh-silver/20 bg-uh-charcoal px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:border-uh-scarlet hover:bg-uh-charcoal-light disabled:cursor-not-allowed disabled:border-uh-scarlet disabled:bg-uh-scarlet disabled:text-zinc-50"
+            active={status === "lobby"}
           >
-            2. Open Lobby
-          </button>
-          <button
-            type="button"
+            2. Lobby
+          </ControlBtn>
+          <ControlBtn
             onClick={() => setGameStatus("board")}
             disabled={status === "board"}
-            className="rounded-xl border border-uh-silver/20 bg-uh-charcoal px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:border-uh-scarlet hover:bg-uh-charcoal-light disabled:cursor-not-allowed disabled:border-uh-scarlet disabled:bg-uh-scarlet disabled:text-zinc-50"
+            active={status === "board"}
           >
-            3. Show Board
-          </button>
+            3. Board
+          </ControlBtn>
         </div>
 
         <button
           type="button"
           onClick={resetGameBoard}
-          className="mt-4 w-full rounded-xl border-2 border-rose-400 bg-rose-500/10 px-5 py-4 text-base font-black uppercase tracking-wide text-rose-300 transition-all duration-300 ease-in-out hover:bg-rose-500/20"
+          className="mt-2.5 w-full rounded-lg border-2 border-rose-500 bg-rose-500/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-rose-300 transition-all duration-300 hover:bg-rose-500 hover:text-zinc-50 active:scale-[0.98]"
         >
-          Reset Game Board
+          ↺ Reset Game Board
         </button>
       </section>
 
+      {/* ── Question Section (Board mode) ── */}
       {status === "board" && (
-        <section className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out">
-          <h2 className="text-lg font-bold uppercase tracking-wide text-uh-silver">
+        <section className="rounded-xl border border-uh-silver/20 bg-uh-charcoal-light p-4 transition-all duration-300">
+          <SectionHeading>
             {currentQuestionId ? "Active Question Controls" : "Question Selection"}
-          </h2>
+          </SectionHeading>
 
           {currentQuestionId ? (
             (() => {
@@ -468,40 +536,40 @@ export default function AdminPage() {
               const selectedAnswer = gameState?.selectedAnswer ?? null;
 
               return (
-                <div className="mt-4 flex flex-col gap-4">
+                <div className="mt-3 flex flex-col gap-3">
                   {spotifyWarning && (
-                    <div className="flex flex-col gap-3 rounded-xl border-2 border-uh-scarlet bg-uh-scarlet/10 p-4 transition-all duration-300 ease-in-out sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm font-semibold text-uh-silver">
-                        ⚠️ No active Spotify device found. Please play a track
-                        on your host device, then click retry.
+                    <div className="flex flex-col gap-2 rounded-lg border border-uh-scarlet bg-uh-scarlet/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs font-semibold text-uh-silver">
+                        ⚠️ No active Spotify device. Play a track on your host device, then retry.
                       </p>
                       <button
                         type="button"
                         onClick={retryPlayback}
-                        className="shrink-0 rounded-lg border-2 border-uh-scarlet px-4 py-2 text-sm font-bold uppercase tracking-wide text-uh-scarlet transition-all duration-300 ease-in-out hover:bg-uh-scarlet hover:text-zinc-50"
+                        className="shrink-0 rounded-md border border-uh-scarlet px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-uh-scarlet transition-all duration-300 hover:bg-uh-scarlet hover:text-zinc-50"
                       >
-                        Retry Playback
+                        Retry
                       </button>
                     </div>
                   )}
 
-                  <p className="text-sm text-zinc-400">
+                  <p className="text-xs text-zinc-400">
                     Now showing:{" "}
                     <span className="font-semibold text-uh-scarlet">
                       {activeQuestion?.questionText ?? currentQuestionId}
                     </span>
                   </p>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Answer options */}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {options.map((option) => (
                       <button
                         key={option}
                         type="button"
                         onClick={() => selectAnswer(option)}
-                        className={`rounded-xl border-2 p-4 text-left text-base font-semibold transition-all duration-300 ease-in-out ${
+                        className={`rounded-lg border-2 p-3 text-left text-xs font-semibold transition-all duration-300 ${
                           option === selectedAnswer
-                            ? "border-uh-scarlet bg-uh-scarlet/10 text-uh-scarlet"
-                            : "border-uh-silver/30 bg-uh-charcoal text-zinc-200 hover:border-uh-scarlet"
+                            ? "border-uh-scarlet bg-uh-scarlet/15 text-uh-scarlet"
+                            : "border-uh-silver/25 bg-uh-charcoal text-zinc-200 hover:border-uh-scarlet"
                         }`}
                       >
                         {option}
@@ -509,51 +577,55 @@ export default function AdminPage() {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {/* Reveal / Back */}
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={revealCorrectAnswer}
-                      className="rounded-2xl bg-emerald-500 px-6 py-8 text-xl font-black uppercase tracking-wide text-zinc-950 transition-all duration-300 ease-in-out hover:bg-emerald-400"
+                      className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-black uppercase tracking-wide text-zinc-950 transition-all duration-300 hover:bg-emerald-400 active:scale-[0.98]"
                     >
-                      Reveal Correct Answer
+                      ✓ Reveal Answer
                     </button>
                     <button
                       type="button"
                       onClick={backToBoard}
-                      className="rounded-2xl bg-uh-scarlet px-6 py-8 text-xl font-black uppercase tracking-wide text-zinc-50 transition-all duration-300 ease-in-out hover:bg-uh-scarlet/80"
+                      className="rounded-lg bg-uh-scarlet px-4 py-3 text-sm font-black uppercase tracking-wide text-zinc-50 transition-all duration-300 hover:bg-uh-scarlet-dark active:scale-[0.98]"
                     >
-                      Back to Board
+                      ← Back to Board
                     </button>
                   </div>
                 </div>
               );
             })()
           ) : questionEntries.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-500">
-              No questions loaded yet — seed the database below.
+            <p className="mt-3 text-xs text-zinc-500">
+              No questions loaded — seed the database below.
             </p>
           ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {questionEntries.map(([questionId, question]) => (
                 <button
                   key={questionId}
                   type="button"
                   onClick={() => selectQuestion(questionId)}
                   disabled={question.isAnswered}
-                  className="flex flex-col items-start gap-1 rounded-xl border border-uh-silver/20 bg-uh-charcoal p-4 text-left transition-all duration-300 ease-in-out hover:border-uh-scarlet disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-uh-charcoal-light disabled:opacity-50"
+                  className="flex flex-col items-start gap-0.5 rounded-lg border border-uh-silver/15 bg-uh-charcoal p-3 text-left transition-all duration-300 hover:border-uh-scarlet disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-uh-charcoal-light disabled:opacity-40"
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wide text-uh-silver">
+                  <span className="text-[0.6rem] font-semibold uppercase tracking-wide text-uh-silver line-clamp-1">
                     {question.category}
                   </span>
-                  <span className="text-lg font-bold text-uh-scarlet">
+                  <span
+                    className="text-sm font-bold text-uh-scarlet"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
                     {question.points} pts
                   </span>
-                  <span className="text-sm text-zinc-300 line-clamp-2">
+                  <span className="text-[0.65rem] text-zinc-300 line-clamp-2">
                     {question.questionText}
                   </span>
                   {question.isAnswered && (
-                    <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Answered
+                    <span className="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-zinc-600">
+                      ✓ Done
                     </span>
                   )}
                 </button>
@@ -563,49 +635,46 @@ export default function AdminPage() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-uh-silver/30 bg-uh-charcoal-light p-6 transition-all duration-300 ease-in-out">
-        <h2 className="text-lg font-bold uppercase tracking-wide text-uh-silver">
-          Team Management
-        </h2>
+      {/* ── Team Management ── */}
+      <section className="rounded-xl border border-uh-silver/20 bg-uh-charcoal-light p-4 transition-all duration-300">
+        <SectionHeading>Team Management</SectionHeading>
 
         {teamEntries.length === 0 ? (
-          <p className="mt-4 text-sm text-zinc-500">No teams checked in yet.</p>
+          <p className="mt-2 text-xs text-zinc-500">No teams checked in yet.</p>
         ) : (
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="mt-2 flex flex-col gap-2">
             {teamEntries.map(([teamId, team]) => (
               <div
                 key={teamId}
-                className="flex flex-col gap-4 rounded-xl border border-uh-silver/20 bg-uh-charcoal p-5 transition-all duration-300 ease-in-out hover:border-uh-scarlet sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-lg border border-uh-silver/15 bg-uh-charcoal p-3 transition-all duration-300 hover:border-uh-scarlet/40 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
-                  <p className="text-xl font-bold text-zinc-50">{team.name}</p>
-                  <p className="text-sm font-medium text-zinc-400">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-zinc-50">{team.name}</p>
+                  <p className="text-xs text-zinc-400">
                     Score:{" "}
-                    <span className="font-bold text-uh-scarlet">
-                      {team.score}
-                    </span>
+                    <span className="font-bold text-uh-scarlet">{team.score}</span>
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex shrink-0 flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => adjustScore(teamId, team.score, 100)}
-                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-950 transition-all duration-300 ease-in-out hover:bg-emerald-400"
+                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-bold text-zinc-950 transition-all duration-300 hover:bg-emerald-400 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-uh-charcoal"
                   >
                     +100
                   </button>
                   <button
                     type="button"
                     onClick={() => adjustScore(teamId, team.score, -100)}
-                    className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-bold text-zinc-950 transition-all duration-300 ease-in-out hover:bg-rose-400"
+                    className="rounded-md bg-rose-500 px-3 py-1.5 text-xs font-bold text-zinc-950 transition-all duration-300 hover:bg-rose-400 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-uh-charcoal"
                   >
-                    -100
+                    −100
                   </button>
                   <button
                     type="button"
                     onClick={() => removeTeam(teamId)}
-                    className="rounded-lg border border-uh-silver/30 px-4 py-2 text-sm font-bold text-zinc-300 transition-all duration-300 ease-in-out hover:border-rose-400 hover:text-rose-400"
+                    className="rounded-md border border-uh-silver/25 px-3 py-1.5 text-xs font-bold text-zinc-300 transition-all duration-300 hover:border-rose-400 hover:text-rose-400 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-uh-silver/50 focus-visible:ring-offset-2 focus-visible:ring-offset-uh-charcoal"
                   >
                     Remove
                   </button>
@@ -616,18 +685,16 @@ export default function AdminPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border-2 border-dashed border-rose-400 bg-rose-950/30 p-6 transition-all duration-300 ease-in-out">
-        <h2 className="text-lg font-bold uppercase tracking-wide text-rose-300">
-          Danger Zone — Temporary Setup Tool
-        </h2>
-        <p className="mt-2 text-sm text-rose-200/80">
-          Overwrites the entire <code>questions</code> node with the 16 seed
-          trivia questions. Remove this button once seeding is complete.
+      {/* ── Danger Zone ── */}
+      <section className="rounded-xl border-2 border-dashed border-rose-500/60 bg-rose-950/20 p-4 transition-all duration-300">
+        <SectionHeading>⚠ Danger Zone — Setup Tool</SectionHeading>
+        <p className="mt-1 text-[0.65rem] text-rose-200/70">
+          Overwrites the entire <code>questions</code> node with the 16 seed trivia questions.
         </p>
         <button
           type="button"
           onClick={seedDatabase}
-          className="mt-4 w-full rounded-xl bg-rose-500 px-5 py-4 text-base font-bold uppercase tracking-wide text-zinc-950 transition-all duration-300 ease-in-out hover:bg-rose-400 sm:w-auto"
+          className="mt-2.5 rounded-lg border-2 border-rose-400 bg-rose-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-rose-300 transition-all duration-300 hover:bg-rose-500 hover:text-zinc-50 active:scale-[0.98]"
         >
           Seed Database
         </button>
