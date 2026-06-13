@@ -433,7 +433,7 @@ function Lobby({ teams }: { teams: Record<string, Team> | null }) {
         {/* QR */}
         <section className="flex min-h-0 flex-col items-center justify-center gap-[2vh] rounded-2xl border border-uh-silver/20 bg-uh-charcoal-light p-[2vh]">
           <div className="rounded-xl bg-white p-[1.5vh] shadow-[0_0_30px_rgba(200,16,46,0.15)]">
-            <QRCodeSVG value="/join" className="h-[26vh] w-[26vh]" />
+            <QRCodeSVG value="https://aidengraduationgame.vercel.app/join" className="h-[26vh] w-[26vh]" />
           </div>
           <p
             className="max-w-[28vw] text-uh-silver"
