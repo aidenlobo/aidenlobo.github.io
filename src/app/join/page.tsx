@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { get, push, ref, set } from "firebase/database";
+import { get, push, ref, set, update } from "firebase/database";
 import { database } from "@/lib/firebase";
 import { useGameState } from "@/hooks/useGameState";
 
@@ -10,7 +10,8 @@ const MIN_MEMBERS = 2;
 const TEAM_ID_STORAGE_KEY = "teamId";
 
 export default function JoinPage() {
-  const { gameState } = useGameState();
+  const { gameState, teams } = useGameState();
+  const [teamId, setTeamId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState("");
   const [captainName, setCaptainName] = useState("");
   const [members, setMembers] = useState<string[]>(["", ""]);
@@ -19,12 +20,19 @@ export default function JoinPage() {
   const [submitted, setSubmitted] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
+  // Final Jeopardy: captain-entered wager + answer
+  const [wagerDraft, setWagerDraft] = useState("");
+  const [wagerSeeded, setWagerSeeded] = useState(false);
+  const [answerDraft, setAnswerDraft] = useState("");
+  const [answerSeeded, setAnswerSeeded] = useState(false);
+
   useEffect(() => {
     const storedTeamId = localStorage.getItem(TEAM_ID_STORAGE_KEY);
 
     const checkExistingTeam = storedTeamId
       ? get(ref(database, `teams/${storedTeamId}`)).then((snapshot) => {
           if (snapshot.exists()) {
+            setTeamId(storedTeamId);
             setSubmitted(true);
           } else {
             localStorage.removeItem(TEAM_ID_STORAGE_KEY);
@@ -40,6 +48,27 @@ export default function JoinPage() {
         setCheckingSession(false);
       });
   }, []);
+
+  const status = gameState?.status;
+  const answersLocked = gameState?.answersLocked ?? false;
+  const myTeam = teamId && teams ? teams[teamId] ?? null : null;
+  const savedAnswer = myTeam?.finalAnswer ?? "";
+
+  // Seed the wager input once from any previously-saved wager.
+  useEffect(() => {
+    if (!wagerSeeded && myTeam) {
+      setWagerDraft(myTeam.finalWager !== undefined ? String(myTeam.finalWager) : "");
+      setWagerSeeded(true);
+    }
+  }, [wagerSeeded, myTeam]);
+
+  // Seed the answer input once from any previously-saved answer.
+  useEffect(() => {
+    if (!answerSeeded && savedAnswer) {
+      setAnswerDraft(savedAnswer);
+      setAnswerSeeded(true);
+    }
+  }, [answerSeeded, savedAnswer]);
 
   const filledMembers = members.map((m) => m.trim()).filter((m) => m.length > 0);
 
@@ -61,9 +90,20 @@ export default function JoinPage() {
     setMembers((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSubmit) return;
+
+    const trimmedName = teamName.trim();
+    const nameTaken = teams
+      ? Object.values(teams).some(
+          (t) => t.name.trim().toLowerCase() === trimmedName.toLowerCase()
+        )
+      : false;
+    if (nameTaken) {
+      setError("That team name is already taken. Please choose another.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -72,13 +112,14 @@ export default function JoinPage() {
       const teamsRef = ref(database, "teams");
       const newTeamRef = push(teamsRef);
       await set(newTeamRef, {
-        name: teamName.trim(),
+        name: trimmedName,
         captain: captainName.trim(),
         members: filledMembers,
         score: 0,
       });
       if (newTeamRef.key) {
         localStorage.setItem(TEAM_ID_STORAGE_KEY, newTeamRef.key);
+        setTeamId(newTeamRef.key);
       }
       setSubmitted(true);
     } catch (err) {
@@ -89,14 +130,39 @@ export default function JoinPage() {
     }
   };
 
+  /* ── Final Jeopardy wager math ──
+     A team may risk anywhere from 0 up to its current score. */
+  const currentScore = myTeam?.score ?? 0;
+  const maxWager = Math.max(0, currentScore);
+  const wagerValue = (() => {
+    if (wagerDraft.trim() === "") return 0;
+    const parsed = Number(wagerDraft);
+    if (Number.isNaN(parsed)) return 0;
+    return Math.min(Math.max(0, Math.floor(parsed)), maxWager);
+  })();
+  const projectedRight = currentScore + wagerValue;
+  const projectedWrong = currentScore - wagerValue;
+
+  const handleWagerChange = (raw: string) => {
+    // Digits only — clamp to the team's current score.
+    const cleaned = raw.replace(/[^\d]/g, "");
+    setWagerDraft(cleaned);
+    if (!teamId) return;
+    const next = cleaned === "" ? 0 : Math.min(Number(cleaned), maxWager);
+    void update(ref(database, `teams/${teamId}`), { finalWager: next });
+  };
+
+  const handleAnswerChange = (value: string) => {
+    setAnswerDraft(value);
+    if (!teamId || answersLocked) return;
+    void update(ref(database, `teams/${teamId}`), { finalAnswer: value });
+  };
+
   /* ── Loading session check ── */
   if (checkingSession) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center bg-uh-charcoal px-6 text-center">
-        <p className="text-7xl select-none" role="img" aria-label="paw prints">
-          🐾
-        </p>
-        <div className="mt-6 flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
           <div
             className="h-8 w-8 rounded-full border-2 border-uh-silver/30 border-t-uh-scarlet"
             style={{ animation: "spin-loader 0.8s linear infinite" }}
@@ -122,6 +188,177 @@ export default function JoinPage() {
     );
   }
 
+  /* ── Final Jeopardy: WAGER phase (registered captains) ── */
+  if (submitted && status === "final_wager") {
+    return (
+      <div
+        className="relative flex flex-1 flex-col bg-uh-charcoal px-5 py-10"
+        style={{ fontFamily: "var(--font-body)" }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-10"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 40% at 50% 0%, #c8102e, transparent)",
+          }}
+        />
+        <div className="mx-auto w-full max-w-md">
+          <TimerBar endsAt={gameState?.timerEndsAt} />
+          <p className="text-xs font-semibold uppercase tracking-[0.45em] text-uh-scarlet">
+            Final Jeopardy
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-50">
+            Place Your Wager
+          </h1>
+          <p className="mt-2 text-sm text-uh-silver">
+            Captain of {myTeam?.name ?? "your team"}, risk anywhere from 0 up to your
+            current score.
+          </p>
+
+          {/* Wager input */}
+          <div className="mt-7 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="wager"
+                className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-uh-silver"
+              >
+                Your Wager
+              </label>
+              <span className="text-[0.65rem] text-uh-silver/60">
+                Max {maxWager}
+              </span>
+            </div>
+            <input
+              id="wager"
+              type="text"
+              inputMode="numeric"
+              value={wagerDraft}
+              onChange={(e) => handleWagerChange(e.target.value)}
+              placeholder="0"
+              className="w-full rounded-xl border border-uh-silver/30 bg-uh-charcoal-light px-4 py-4 text-center text-3xl font-black text-uh-scarlet outline-none transition-all duration-300 focus:border-uh-scarlet"
+              style={{ fontFamily: "var(--font-display)" }}
+            />
+            {wagerDraft.trim() !== "" && Number(wagerDraft) > maxWager && (
+              <p className="text-xs font-medium text-amber-400">
+                Capped at your current score ({maxWager}).
+              </p>
+            )}
+          </div>
+
+          {/* Live projection */}
+          <div className="mt-7 grid grid-cols-3 gap-2.5">
+            <div className="flex flex-col items-center gap-1 rounded-xl border border-uh-silver/20 bg-uh-charcoal-light px-2 py-4 text-center">
+              <span className="text-[0.55rem] font-semibold uppercase tracking-widest text-uh-silver">
+                Current
+              </span>
+              <span
+                className="text-zinc-50"
+                style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", lineHeight: 1 }}
+              >
+                {currentScore}
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2 py-4 text-center">
+              <span className="text-[0.55rem] font-semibold uppercase tracking-widest text-emerald-300">
+                If Correct
+              </span>
+              <span
+                className="text-emerald-400"
+                style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", lineHeight: 1 }}
+              >
+                {projectedRight}
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-1 rounded-xl border border-rose-500/40 bg-rose-500/10 px-2 py-4 text-center">
+              <span className="text-[0.55rem] font-semibold uppercase tracking-widest text-rose-300">
+                If Wrong
+              </span>
+              <span
+                className="text-rose-400"
+                style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", lineHeight: 1 }}
+              >
+                {projectedWrong}
+              </span>
+            </div>
+          </div>
+
+          <p className="mt-5 text-center text-xs font-medium text-emerald-400">
+            Your wager saves automatically as you type.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Final Jeopardy: ANSWER phase (registered captains) ── */
+  if (submitted && status === "final_answer") {
+    return (
+      <div
+        className="relative flex flex-1 flex-col bg-uh-charcoal px-5 py-10"
+        style={{ fontFamily: "var(--font-body)" }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-10"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 40% at 50% 0%, #c8102e, transparent)",
+          }}
+        />
+        <div className="mx-auto w-full max-w-md">
+          <TimerBar endsAt={gameState?.timerEndsAt} />
+          <p className="text-xs font-semibold uppercase tracking-[0.45em] text-uh-scarlet">
+            Final Jeopardy
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-50">
+            {answersLocked ? "Answers Locked" : "Your Final Answer"}
+          </h1>
+          <p className="mt-2 text-sm text-uh-silver">
+            {answersLocked
+              ? "The host has locked all answers. Good luck!"
+              : `Captain of ${myTeam?.name ?? "your team"}, type your final answer below. It saves automatically.`}
+          </p>
+
+          <div className="mt-7 flex flex-col gap-1.5">
+            <label
+              htmlFor="finalAnswer"
+              className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-uh-silver"
+            >
+              Final Answer
+            </label>
+            <textarea
+              id="finalAnswer"
+              value={answerDraft}
+              onChange={(e) => handleAnswerChange(e.target.value)}
+              disabled={answersLocked}
+              rows={3}
+              placeholder="Type your team's answer..."
+              className={`w-full resize-none rounded-xl border bg-uh-charcoal-light px-4 py-3 text-base text-zinc-50 outline-none transition-all duration-300 ${
+                answersLocked
+                  ? "cursor-not-allowed border-uh-silver/15 opacity-60"
+                  : "border-uh-silver/30 focus:border-uh-scarlet"
+              }`}
+            />
+          </div>
+
+          {answersLocked ? (
+            <div className="mt-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-center">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-emerald-300">
+                Submitted and Locked
+              </p>
+              <p className="mt-2 text-lg font-bold text-zinc-50">
+                {savedAnswer || "no answer submitted"}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-5 text-center text-xs font-medium text-emerald-400">
+              Your answer saves automatically as you type.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   /* ── Already submitted ── */
   if (submitted) {
     return (
@@ -134,9 +371,9 @@ export default function JoinPage() {
               "radial-gradient(ellipse 60% 50% at 50% 50%, #10b981, transparent)",
           }}
         />
-        <p className="text-6xl select-none">🎉</p>
+        <TimerBar endsAt={gameState?.timerEndsAt} />
         <h1
-          className="mt-6 text-4xl font-bold leading-tight tracking-tight text-zinc-50 sm:text-5xl"
+          className="text-4xl font-bold leading-tight tracking-tight text-zinc-50 sm:text-5xl"
           style={{ fontFamily: "var(--font-body)" }}
         >
           You are{" "}
@@ -165,11 +402,9 @@ export default function JoinPage() {
               "radial-gradient(ellipse 70% 50% at 50% 50%, #c8102e, transparent)",
           }}
         />
-        <p className="text-7xl select-none" role="img" aria-label="timer">
-          ⏱️
-        </p>
+        <TimerBar endsAt={gameState?.timerEndsAt} />
         <h1
-          className="mt-5 uppercase leading-none text-uh-scarlet"
+          className="uppercase leading-none text-uh-scarlet"
           style={{
             fontFamily: "var(--font-display)",
             fontSize: "clamp(2.5rem, 10vw, 4.5rem)",
@@ -198,6 +433,7 @@ export default function JoinPage() {
       style={{ fontFamily: "var(--font-body)" }}
     >
       <div className="mx-auto w-full max-w-md">
+        <TimerBar endsAt={gameState?.timerEndsAt} />
         {/* Eyebrow */}
         <p className="text-xs font-semibold uppercase tracking-[0.45em] text-uh-scarlet">
           Coog Jeopardy
@@ -279,10 +515,10 @@ export default function JoinPage() {
                     <button
                       type="button"
                       onClick={() => removeMember(index)}
-                      className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-uh-silver/25 text-uh-silver/60 transition-all duration-300 hover:border-uh-scarlet hover:text-uh-scarlet"
+                      className="mb-1 flex h-7 shrink-0 items-center justify-center rounded-full border border-uh-silver/25 px-3 text-[0.6rem] font-semibold uppercase tracking-wide text-uh-silver/60 transition-all duration-300 hover:border-uh-scarlet hover:text-uh-scarlet"
                       aria-label={`Remove member ${index + 1}`}
                     >
-                      <span className="text-xs leading-none">✕</span>
+                      Remove
                     </button>
                   )}
                 </div>
@@ -330,10 +566,59 @@ export default function JoinPage() {
                 Submitting...
               </span>
             ) : (
-              "Let's Play →"
+              "Let's Play"
             )}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Visual countdown — mirrors gameState.timerEndsAt, set by the Admin's
+   "Start 15s Timer" button. Purely informational: it never auto-submits
+   or disables inputs, even after it reaches zero (it simply disappears).
+───────────────────────────────────────────── */
+const TIMER_DURATION_MS = 15000;
+
+function TimerBar({ endsAt }: { endsAt?: number }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!endsAt) return;
+    const interval = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= endsAt) clearInterval(interval);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [endsAt]);
+
+  if (!endsAt || endsAt <= now) return null;
+
+  const remainingMs = endsAt - now;
+  const pct = Math.max(0, Math.min(100, (remainingMs / TIMER_DURATION_MS) * 100));
+  const seconds = Math.ceil(remainingMs / 1000);
+
+  return (
+    <div className="mx-auto mb-6 w-full max-w-md">
+      <div className="flex items-center justify-between">
+        <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-uh-silver">
+          Time Remaining
+        </span>
+        <span
+          className="text-sm font-black text-uh-scarlet"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {seconds}s
+        </span>
+      </div>
+      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-uh-charcoal-light">
+        <div
+          className="h-full rounded-full bg-uh-scarlet transition-all duration-100 ease-linear"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );

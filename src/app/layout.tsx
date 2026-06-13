@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Aiden's Coog Jeopardy Championship",
   description:
-    "A real-time graduation Jeopardy game built for Aiden's Coog Graduation — University of Houston.",
+    "A real-time graduation Jeopardy game built for Aiden's Coog Graduation, University of Houston.",
   openGraph: {
     title: "Aiden's Coog Jeopardy Championship",
     description: "Join the live trivia game at Aiden's UH Graduation party!",
