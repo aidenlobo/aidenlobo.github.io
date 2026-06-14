@@ -392,11 +392,12 @@ function Welcome() {
           fontFamily: "var(--font-display)",
           fontSize: "clamp(3rem, 14vh, 11rem)",
           letterSpacing: "0.04em",
+          animationDuration: "8s",
         }}
       >
         Aiden&apos;s Graduation Party
       </h1>
-      <div className="welcome-bar mt-[3vh] w-[24vw]" />
+      <div className="welcome-bar mt-[3vh] w-[24vw]" style={{ animationDuration: "5.6s" }} />
       <p
         className="mt-[2.5vh] text-uh-silver"
         style={{ fontFamily: "var(--font-body)", fontSize: "clamp(0.9rem, 2.4vh, 1.6rem)" }}
@@ -838,13 +839,7 @@ function Podium({ teams }: { teams: Record<string, Team> | null }) {
 
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // The next tick unveils 1st place — fire the drumroll exactly 1s
-    // before that reveal lands.
-    if (revealedCount === totalGroups - 1) {
-      timers.push(
-        setTimeout(() => playCue("/sounds/drumroll.mp3"), REVEAL_INTERVAL_MS - 1000)
-      );
-    }
+    // The next tick unveils 1st place — no sound cues configured.
 
     timers.push(
       setTimeout(() => setRevealedCount((count) => count + 1), REVEAL_INTERVAL_MS)
@@ -853,12 +848,7 @@ function Podium({ teams }: { teams: Record<string, Team> | null }) {
     return () => timers.forEach(clearTimeout);
   }, [revealedCount, totalGroups]);
 
-  // Celebrate the instant the champion (1st place) is on screen.
-  useEffect(() => {
-    if (totalGroups > 0 && revealedCount === totalGroups) {
-      playCue("/sounds/cheer.mp3");
-    }
-  }, [revealedCount, totalGroups]);
+  // Celebrate the instant the champion (1st place) is on screen. (no audio)
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-[4vw] py-[3vh] text-center">
